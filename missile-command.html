@@ -1,0 +1,752 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Superhéroe vs Asteroides</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 800px;
+            height: 600px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #0a0a2a 0%, #1a1a4a 100%);
+            border: 3px solid #ffd700;
+            border-radius: 10px;
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            color: white;
+            font-size: 20px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        #score, #level {
+            background: rgba(0, 0, 0, 0.6);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #ffd700;
+        }
+
+        #lives {
+            display: flex;
+            gap: 10px;
+        }
+
+        .life {
+            width: 25px;
+            height: 25px;
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            border-radius: 50%;
+            border: 2px solid white;
+            box-shadow: 0 0 10px #ff4444;
+        }
+
+        #game-over, #game-start {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+        }
+
+        #game-start {
+            background: linear-gradient(135deg, rgba(10, 10, 42, 0.9) 0%, rgba(26, 26, 74, 0.9) 100%);
+        }
+
+        #game-over h2, #game-start h2 {
+            font-size: 48px;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ffd700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #game-over p, #game-start p {
+            font-size: 24px;
+            margin: 10px 0;
+            text-align: center;
+        }
+
+        #final-score {
+            font-size: 36px;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+
+        #start-btn, #restart-btn {
+            background: linear-gradient(135deg, #ffd700, #ffa500);
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            margin-top: 30px;
+            box-shadow: 0 0 20px #ffd700;
+            transition: all 0.3s ease;
+        }
+
+        #start-btn:hover, #restart-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #ffd700;
+        }
+
+        #instructions {
+            margin-top: 30px;
+            text-align: center;
+            font-size: 18px;
+            line-height: 1.8;
+            max-width: 600px;
+        }
+
+        #instructions strong {
+            color: #ffd700;
+        }
+
+        #level-up {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 48px;
+            color: #ffd700;
+            text-shadow: 0 0 30px #ffd700;
+            opacity: 0;
+            z-index: 15;
+            pointer-events: none;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="800" height="600"></canvas>
+        
+        <div id="hud">
+            <div id="score">Puntuación: 0</div>
+            <div id="level">Nivel: 1</div>
+            <div id="lives">
+                <div class="life"></div>
+                <div class="life"></div>
+                <div class="life"></div>
+            </div>
+        </div>
+
+        <div id="game-start">
+            <h2>🦸 SUPERHÉROE VS ASTEROIDES</h2>
+            <p>Protege la ciudad de la lluvia de asteroides</p>
+            <p><strong>MOUSE:</strong> Mover superhéroe</p>
+            <p><strong>CLICK IZQUIERDO:</strong> Disparar rayo</p>
+            <p><strong>CLICK DERECHO:</strong> Rayo poderoso (recarga)</p>
+            <button id="start-btn">🎮 ¡COMENZAR!</button>
+        </div>
+
+        <div id="game-over" style="display: none;">
+            <h2>💥 ¡GAME OVER!</h2>
+            <p>La ciudad ha sido destruida</p>
+            <div id="final-score">Puntuación: 0</div>
+            <button id="restart-btn">🔄 JUGAR DE NUEVO</button>
+        </div>
+
+        <div id="level-up">¡NIVEL +1!</div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const levelDisplay = document.getElementById('level');
+        const livesDisplay = document.getElementById('lives');
+        const gameOverScreen = document.getElementById('game-over');
+        const gameStartScreen = document.getElementById('game-start');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const levelUpDisplay = document.getElementById('level-up');
+
+        // Variables del juego
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let asteroids = [];
+        let lasers = [];
+        let buildings = [];
+        let hero = { x: 400, y: 520, width: 40, height: 60, speed: 5, charge: 100 };
+        let specialReady = true;
+        let lastAsteroidTime = 0;
+        let asteroidInterval = 1500; // ms entre asteroides
+        let keys = {};
+        let mouseX = 400;
+        let mouseY = 520;
+        let gameOver = false;
+        let levelUpTimer = null;
+
+        // Inicializar el juego
+        function init() {
+            gameRunning = true;
+            gameOver = false;
+            score = 0;
+            level = 1;
+            lives = 3;
+            asteroids = [];
+            lasers = [];
+            hero = { x: 400, y: 520, width: 40, height: 60, speed: 5, charge: 100 };
+            specialReady = true;
+            asteroidInterval = 1500;
+            lastAsteroidTime = Date.now();
+            
+            // Crear edificios
+            createBuildings();
+            
+            // Actualizar HUD
+            updateHUD();
+            
+            // Ocultar pantalla de inicio/game over
+            gameStartScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Empezar el juego
+            gameLoop();
+        }
+
+        // Crear edificios de la ciudad
+        function createBuildings() {
+            buildings = [];
+            const numBuildings = 15;
+            const buildingWidth = canvas.width / numBuildings;
+            
+            for (let i = 0; i < numBuildings; i++) {
+                const height = Math.random() * 80 + 40;
+                const colorIndex = Math.floor(Math.random() * 3);
+                const colors = ['#4a90e2', '#50e3c2', '#f5a623'];
+                
+                buildings.push({
+                    x: i * buildingWidth,
+                    y: canvas.height - height,
+                    width: buildingWidth - 2,
+                    height: height,
+                    color: colors[colorIndex],
+                    windows: Math.floor(Math.random() * 6) + 3,
+                    intact: true
+                });
+            }
+        }
+
+        // Crear asteroide
+        function createAsteroid() {
+            const now = Date.now();
+            if (now - lastAsteroidTime > asteroidInterval) {
+                const x = Math.random() * canvas.width;
+                const size = Math.random() * 30 + 20;
+                const speed = Math.random() * 2 + level * 0.5;
+                
+                asteroids.push({
+                    x: x,
+                    y: -size,
+                    size: size,
+                    speed: speed,
+                    vx: (Math.random() - 0.5) * 2,
+                    color: `hsl(${Math.random() * 360}, 70%, 50%)`,
+                    rotation: 0,
+                    rotationSpeed: (Math.random() - 0.5) * 0.1
+                });
+                
+                lastAsteroidTime = now;
+            }
+        }
+
+        // Disparar láser normal
+        function shootLaser(x, y) {
+            lasers.push({
+                x: hero.x,
+                y: hero.y - 20,
+                targetX: x,
+                targetY: y,
+                speed: 15,
+                width: 4,
+                color: '#ffd700',
+                damage: 1,
+                special: false,
+                alive: true
+            });
+        }
+
+        // Disparar láser especial (rayo poderoso)
+        function shootSpecialLaser() {
+            if (specialReady) {
+                // Rayo grande que destruye múltiples asteroides
+                lasers.push({
+                    x: hero.x,
+                    y: hero.y - 30,
+                    targetX: hero.x,
+                    targetY: 0,
+                    speed: 20,
+                    width: 20,
+                    color: '#ff4444',
+                    damage: 3,
+                    special: true,
+                    alive: true
+                });
+                
+                specialReady = false;
+                hero.charge = 0;
+                
+                // Recargar después de 5 segundos
+                setTimeout(() => {
+                    specialReady = true;
+                }, 5000);
+            }
+        }
+
+        // Actualizar HUD
+        function updateHUD() {
+            scoreDisplay.textContent = `Puntuación: ${score}`;
+            levelDisplay.textContent = `Nivel: ${level}`;
+            
+            // Actualizar vidas
+            livesDisplay.innerHTML = '';
+            for (let i = 0; i < lives; i++) {
+                const life = document.createElement('div');
+                life.className = 'life';
+                livesDisplay.appendChild(life);
+            }
+            
+            // Actualizar carga del especial
+            if (!specialReady) {
+                hero.charge = Math.min(100, hero.charge + 0.2);
+            }
+        }
+
+        // Subir de nivel
+        function levelUp() {
+            level++;
+            asteroidInterval = Math.max(300, 1500 - level * 150);
+            
+            // Mostrar mensaje de nivel
+            levelUpDisplay.style.opacity = '1';
+            levelUpDisplay.textContent = `¡NIVEL ${level}!`;
+            
+            setTimeout(() => {
+                levelUpDisplay.style.opacity = '0';
+            }, 2000);
+            
+            updateHUD();
+        }
+
+        // Verificar colisiones
+        function checkCollisions() {
+            // Láseres vs Asteroides
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                
+                for (let j = asteroids.length - 1; j >= 0; j--) {
+                    const asteroid = asteroids[j];
+                    const dx = laser.x - asteroid.x;
+                    const dy = laser.y - asteroid.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < asteroid.size / 2 + laser.width) {
+                        // Impacto
+                        if (laser.special) {
+                            // Rayo especial destruye completamente
+                            asteroids.splice(j, 1);
+                            score += 50;
+                        } else {
+                            // Rayo normal reduce el asteroide
+                            asteroid.size -= 10 * laser.damage;
+                            if (asteroid.size <= 0) {
+                                asteroids.splice(j, 1);
+                                score += 20;
+                            }
+                        }
+                        
+                        // Subir de nivel cada 500 puntos
+                        if (score >= level * 500) {
+                            levelUp();
+                        }
+                        
+                        updateHUD();
+                        break;
+                    }
+                }
+            }
+            
+            // Asteroides vs Edificios
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                
+                if (asteroid.y > canvas.height - 50) {
+                    // Verificar si golpea un edificio
+                    for (const building of buildings) {
+                        if (building.intact && 
+                            asteroid.x > building.x && 
+                            asteroid.x < building.x + building.width &&
+                            asteroid.y > building.y) {
+                            
+                            building.intact = false;
+                            asteroids.splice(i, 1);
+                            
+                            // Perder vida si se destruyen muchos edificios
+                            const intactBuildings = buildings.filter(b => b.intact).length;
+                            if (intactBuildings < 5) {
+                                lives--;
+                                updateHUD();
+                                
+                                if (lives <= 0) {
+                                    endGame();
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            // Asteroides vs Superhéroe
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                const dx = hero.x - asteroid.x;
+                const dy = hero.y - asteroid.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < asteroid.size / 2 + hero.width / 2) {
+                    // Impacto con héroe
+                    lives--;
+                    asteroids.splice(i, 1);
+                    updateHUD();
+                    
+                    if (lives <= 0) {
+                        endGame();
+                    }
+                    break;
+                }
+            }
+        }
+
+        // Terminar juego
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            finalScoreDisplay.textContent = `Puntuación: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+
+        // Dibujar edificios
+        function drawBuildings() {
+            buildings.forEach(building => {
+                if (!building.intact) return;
+                
+                // Cuerpo del edificio
+                ctx.fillStyle = building.color;
+                ctx.fillRect(building.x, building.y, building.width, building.height);
+                
+                // Techo
+                ctx.fillStyle = '#2a2a2a';
+                ctx.beginPath();
+                ctx.moveTo(building.x, building.y);
+                ctx.lineTo(building.x + building.width, building.y);
+                ctx.lineTo(building.x + building.width / 2, building.y - 15);
+                ctx.closePath();
+                ctx.fill();
+                
+                // Ventanas
+                ctx.fillStyle = '#ffd700';
+                const windowWidth = building.width / 3;
+                const windowHeight = 10;
+                const spacing = 5;
+                
+                for (let w = 0; w < building.windows; w++) {
+                    const wx = building.x + spacing;
+                    const wy = building.y + spacing + w * (windowHeight + spacing);
+                    ctx.fillRect(wx, wy, windowWidth, windowHeight);
+                    ctx.fillRect(wx + windowWidth + spacing, wy, windowWidth, windowHeight);
+                }
+                
+                // Borde
+                ctx.strokeStyle = '#ffffff';
+                ctx.lineWidth = 2;
+                ctx.strokeRect(building.x, building.y, building.width, building.height);
+            });
+        }
+
+        // Dibujar superhéroe
+        function drawHero() {
+            ctx.save();
+            ctx.translate(hero.x, hero.y);
+            
+            // Cuerpo
+            ctx.fillStyle = '#3498db';
+            ctx.beginPath();
+            ctx.arc(0, -10, 20, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Cabeza
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(0, -25, 10, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ojos
+            ctx.fillStyle = '#2c3e50';
+            ctx.beginPath();
+            ctx.arc(-4, -27, 3, 0, Math.PI * 2);
+            ctx.arc(4, -27, 3, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Capa
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(-25, -10);
+            ctx.lineTo(-25, 15);
+            ctx.lineTo(25, 15);
+            ctx.lineTo(25, -10);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Logo en el pecho
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(0, -5, 6, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Rayo de carga especial
+            if (!specialReady) {
+                ctx.fillStyle = `rgba(255, 215, 0, ${hero.charge / 100})`;
+                ctx.beginPath();
+                ctx.arc(0, -35, 15, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // Dibujar asteroide
+        function drawAsteroid(asteroid) {
+            ctx.save();
+            ctx.translate(asteroid.x, asteroid.y);
+            ctx.rotate(asteroid.rotation);
+            
+            // Asteroide irregular
+            ctx.fillStyle = asteroid.color;
+            ctx.beginPath();
+            for (let i = 0; i < 8; i++) {
+                const angle = (i / 8) * Math.PI * 2;
+                const radius = asteroid.size / 2 * (0.8 + Math.random() * 0.4);
+                const x = Math.cos(angle) * radius;
+                const y = Math.sin(angle) * radius;
+                
+                if (i === 0) ctx.moveTo(x, y);
+                else ctx.lineTo(x, y);
+            }
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cráteres
+            ctx.fillStyle = 'rgba(100, 100, 100, 0.5)';
+            for (let i = 0; i < 3; i++) {
+                const angle = Math.random() * Math.PI * 2;
+                const dist = asteroid.size / 4;
+                const x = Math.cos(angle) * dist;
+                const y = Math.sin(angle) * dist;
+                const r = asteroid.size / 8;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, r, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            
+            ctx.restore();
+        }
+
+        // Dibujar láser
+        function drawLaser(laser) {
+            ctx.save();
+            ctx.translate(laser.x, laser.y);
+            
+            // Calcular ángulo hacia el objetivo
+            const dx = laser.targetX - laser.x;
+            const dy = laser.targetY - laser.y;
+            const angle = Math.atan2(dy, dx);
+            
+            ctx.rotate(angle);
+            
+            // Rayo principal
+            const gradient = ctx.createLinearGradient(0, -laser.width/2, 0, laser.width/2);
+            gradient.addColorStop(0, 'rgba(255, 255, 255, 0)');
+            gradient.addColorStop(0.3, laser.color);
+            gradient.addColorStop(0.7, laser.color);
+            gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            
+            ctx.fillStyle = gradient;
+            ctx.fillRect(0, -laser.width/2, 30, laser.width);
+            
+            // Brillo
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
+            ctx.fillRect(0, -laser.width/4, 20, laser.width/2);
+            
+            ctx.restore();
+        }
+
+        // Dibujar estrellas de fondo
+        function drawStars() {
+            ctx.fillStyle = '#ffffff';
+            for (let i = 0; i < 100; i++) {
+                const x = (Date.now() / 1000 + i * 13) % canvas.width;
+                const y = (i * 23) % canvas.height;
+                const size = Math.sin(Date.now() / 500 + i) * 1.5 + 1.5;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Bucle principal del juego
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Dibujar fondo
+            drawStars();
+            
+            // Crear asteroides
+            createAsteroid();
+            
+            // Mover y dibujar asteroides
+            for (let i = asteroids.length - 1; i >= 0; i--) {
+                const asteroid = asteroids[i];
+                
+                asteroid.x += asteroid.vx;
+                asteroid.y += asteroid.speed;
+                asteroid.rotation += asteroid.rotationSpeed;
+                
+                // Eliminar asteroides fuera de pantalla
+                if (asteroid.y > canvas.height + asteroid.size) {
+                    asteroids.splice(i, 1);
+                    continue;
+                }
+                
+                drawAsteroid(asteroid);
+            }
+            
+            // Mover y dibujar láseres
+            for (let i = lasers.length - 1; i >= 0; i--) {
+                const laser = lasers[i];
+                
+                // Calcular dirección hacia el objetivo
+                const dx = laser.targetX - laser.x;
+                const dy = laser.targetY - laser.y;
+                const dist = Math.sqrt(dx * dx + dy * dy);
+                const speed = Math.min(laser.speed, dist);
+                
+                laser.x += (dx / dist) * speed;
+                laser.y += (dy / dist) * speed;
+                
+                // Eliminar láseres fuera de pantalla
+                if (laser.y < 0 || !laser.alive) {
+                    lasers.splice(i, 1);
+                    continue;
+                }
+                
+                drawLaser(laser);
+            }
+            
+            // Dibujar ciudad
+            drawBuildings();
+            
+            // Mover héroe hacia la posición del mouse
+            const dx = mouseX - hero.x;
+            const dy = mouseY - hero.y;
+            const dist = Math.sqrt(dx * dx + dy * dy);
+            
+            if (dist > 5) {
+                hero.x += (dx / dist) * Math.min(8, dist);
+                hero.y += (dy / dist) * Math.min(8, dist);
+            }
+            
+            // Limitar héroe a la zona de la ciudad
+            hero.x = Math.max(50, Math.min(canvas.width - 50, hero.x));
+            hero.y = Math.max(canvas.height - 100, Math.min(canvas.height - 30, hero.y));
+            
+            // Dibujar superhéroe
+            drawHero();
+            
+            // Verificar colisiones
+            checkCollisions();
+            
+            // Continuar bucle
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Eventos del mouse
+        canvas.addEventListener('mousemove', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            mouseX = e.clientX - rect.left;
+            mouseY = e.clientY - rect.top;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            if (!gameRunning || gameOver) return;
+            
+            const rect = canvas.getBoundingClientRect();
+            const clickX = e.clientX - rect.left;
+            const clickY = e.clientY - rect.top;
+            
+            shootLaser(clickX, clickY);
+        });
+
+        canvas.addEventListener('contextmenu', (e) => {
+            e.preventDefault();
+            if (!gameRunning || gameOver || !specialReady) return;
+            
+            shootSpecialLaser();
+        });
+
+        // Eventos de botones
+        startBtn.addEventListener('click', init);
+        restartBtn.addEventListener('click', init);
+
+        // Iniciar con pantalla de inicio
+        gameStartScreen.style.display = 'flex';
+    </script>
+</body>
+</html>
