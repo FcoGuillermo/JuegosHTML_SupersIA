@@ -1,0 +1,991 @@
+<!DOCTYPE html>
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Heroe vs Villanos</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 470px;
+        }
+
+        canvas {
+            background: #000;
+            border: 4px solid #ffd700;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 215, 0, 0.5);
+        }
+
+        #screens {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #start-screen, #game-over-screen, #victory-screen, #level-screen {
+            background: rgba(0, 0, 0, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 550px;
+        }
+
+        #start-screen h1, #game-over-screen h1, #victory-screen h1, #level-screen h1 {
+            font-size: 48px;
+            color: #ffd700;
+            text-shadow: 0 0 20px #ffd700;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #start-screen p, #game-over-screen p, #victory-screen p, #level-screen p {
+            font-size: 20px;
+            line-height: 1.8;
+            margin: 15px 0;
+        }
+
+        #start-screen strong, #instructions strong {
+            color: #ffd700;
+        }
+
+        #start-btn, #restart-btn, #next-level-btn {
+            background: linear-gradient(135deg, #ffd700, #ffa500);
+            color: #1a1a2e;
+            border: none;
+            padding: 15px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 20px 0;
+            box-shadow: 0 0 20px #ffd700;
+            transition: all 0.3s ease;
+        }
+
+        #start-btn:hover, #restart-btn:hover, #next-level-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #ffd700;
+        }
+
+        #instructions {
+            margin-top: 20px;
+            background: rgba(26, 26, 46, 0.9);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ffd700;
+        }
+
+        #level-number {
+            font-size: 64px;
+            color: #ffd700;
+            margin: 20px 0;
+            text-shadow: 0 0 20px #ffd700;
+        }
+
+        #final-score {
+            font-size: 36px;
+            color: #ffd700;
+            margin: 20px 0;
+        }
+
+        #speed-meter {
+            margin-top: 20px;
+            width: 300px;
+            height: 30px;
+            background: #333;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #ffd700;
+        }
+
+        #speed-bar {
+            height: 100%;
+            width: 10%;
+            background: linear-gradient(90deg, #2ecc71, #f39c12, #e74c3c);
+            transition: width 0.3s ease;
+        }
+
+        #speed-label {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ffd700;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="600" height="470"></canvas>
+
+        <div id="screens">
+            <!-- Pantalla de inicio -->
+            <div id="start-screen">
+                <h1>🦸 HEROE vs VILLANOS</h1>
+                <p>Controla al superhéroe y rescata a los ciudadanos.</p>
+                <p>¡Cuidado con los villanos que te persiguen!</p>
+                <p>Cada 30 segundos los villanos serán más rápidos.</p>
+                
+                <div id="instructions">
+                    <p><strong>← → ↑ ↓ :</strong> Moverse por el laberinto</p>
+                    <p><strong>C :</strong> Super velocidad (cooldown 10s)</p>
+                </div>
+                
+                <p><strong>Puntuación:</strong></p>
+                <p>+100 puntos por ciudadano rescatado</p>
+                <p>+500 puntos por nivel completado</p>
+                
+                <button id="start-btn">🎮 ¡COMENZAR!</button>
+            </div>
+
+            <!-- Pantalla de nivel -->
+            <div id="level-screen" style="display: none;">
+                <h1>🏢 NIVEL</h1>
+                <div id="level-number">1</div>
+                <div id="speed-label">Dificultad actual</div>
+                <div id="speed-meter">
+                    <div id="speed-bar"></div>
+                </div>
+                <button id="next-level-btn">▶ ¡CONTINUAR!</button>
+            </div>
+
+            <!-- Pantalla de game over -->
+            <div id="game-over-screen" style="display: none;">
+                <h1>💀 ¡DERROTADO!</h1>
+                <p>Los villanos han capturado al superhéroe...</p>
+                
+                <div class="stat-label">PUNTUACIÓN FINAL:</div>
+                <div id="final-score">SCORE: 000000</div>
+                
+                <div class="stat-label">CIUDADANOS RESCATADOS:</div>
+                <div id="final-citizens">0</div>
+                
+                <div class="stat-label">VELOCIDAD MÁXIMA:</div>
+                <div id="final-speed">SPEED: 0.1x</div>
+                
+                <button id="restart-btn">🔄 ¡INTENTAR DE NUEVO!</button>
+            </div>
+
+            <!-- Pantalla de victoria -->
+            <div id="victory-screen" style="display: none;">
+                <h1>🎉 ¡MISIÓN CUMPLIDA!</h1>
+                <p>¡Has rescatado a todos los ciudadanos!</p>
+                
+                <div class="stat-label">PUNTUACIÓN FINAL:</div>
+                <div id="final-score">SCORE: 000000</div>
+                
+                <div class="stat-label">CIUDADANOS RESCATADOS:</div>
+                <div id="final-citizens">0</div>
+                
+                <button id="restart-btn">🎮 ¡NUEVA MISIÓN!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const startScreen = document.getElementById('start-screen');
+        const levelScreen = document.getElementById('level-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const victoryScreen = document.getElementById('victory-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const nextLevelBtn = document.getElementById('next-level-btn');
+        const levelNumberDisplay = document.getElementById('level-number');
+        const speedBar = document.getElementById('speed-bar');
+        const speedLabel = document.getElementById('speed-label');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const finalCitizensDisplay = document.getElementById('final-citizens');
+        const finalSpeedDisplay = document.getElementById('final-speed');
+
+        // Constantes del juego
+        const TILE_SIZE = 30;
+        const GRID_WIDTH = 20;
+        const GRID_HEIGHT = 13;
+        const BASE_SPEED = 2.5;
+        const SPEED_INCREMENT = 0.1;
+        const SPEED_INCREMENT_TIME = 30000;
+        const SUPER_SPEED_MULTIPLIER = 2;
+        const SUPER_SPEED_DURATION = 5000;
+        const SUPER_SPEED_COOLDOWN = 10000;
+        const MIN_CITIZENS_PER_LEVEL = 12;
+
+        // Variables del juego
+        let gameRunning = false;
+        let score = 0;
+        let level = 1;
+        let lives = 3;
+        let speedMultiplier = 0.1;
+        let lastSpeedIncrease = 0;
+        let gameTime = 0;
+        let keys = {};
+        let maze = [];
+        let hero = {
+            x: 1.5,
+            y: 1.5,
+            dirX: 0,
+            dirY: 0,
+            nextDirX: 0,
+            nextDirY: 0,
+            speed: BASE_SPEED,
+            color: '#ffd700',
+            mouthAngle: 0.2,
+            mouthDir: 0.1,
+            superSpeed: false,
+            superSpeedTimer: 0,
+            superSpeedCooldown: 0,
+            facing: 1
+        };
+        let villains = [];
+        let citizens = [];
+        let gameOver = false;
+        let victory = false;
+        let showLevelScreen = false;
+        let rescuedCitizens = 0;
+        let totalCitizens = 0;
+        let gameFrame = 0;
+
+        // Laberinto - 20x13
+        const MAZE = [
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,0,1,1,0,1,0,1,1,1,1,0,1],
+            [1,0,1,0,0,0,0,1,0,0,0,0,1,0,0,0,0,1,0,1],
+            [1,0,1,0,1,1,1,1,1,1,1,1,1,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,1,1,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,0,1,0,1,1,0,1,0,1,1,1,1,1,1],
+            [1,0,0,0,0,0,0,1,0,0,0,0,1,0,0,0,0,0,0,1],
+            [1,0,1,1,1,1,0,1,1,1,1,1,1,0,1,1,1,1,0,1],
+            [1,0,1,0,0,0,0,0,0,1,1,0,0,0,0,0,0,1,0,1],
+            [1,0,1,0,1,1,1,1,0,1,1,0,1,1,1,1,0,1,0,1],
+            [1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1],
+            [1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1,1]
+        ];
+
+        // Inicializar el juego
+        function init() {
+            gameRunning = true;
+            gameOver = false;
+            victory = false;
+            score = 0;
+            level = 1;
+            lives = 3;
+            speedMultiplier = 0.1;
+            lastSpeedIncrease = Date.now();
+            gameTime = 0;
+            rescuedCitizens = 0;
+            gameFrame = 0;
+            
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            victoryScreen.style.display = 'none';
+            levelScreen.style.display = 'none';
+            
+            initLevel(level);
+            gameLoop();
+        }
+
+        // Inicializar nivel
+        function initLevel(levelNum) {
+            maze = JSON.parse(JSON.stringify(MAZE));
+            
+            hero = {
+                x: 1.5,
+                y: 1.5,
+                dirX: 0,
+                dirY: 0,
+                nextDirX: 0,
+                nextDirY: 0,
+                speed: BASE_SPEED,
+                color: '#ffd700',
+                mouthAngle: 0.2,
+                mouthDir: 0.1,
+                superSpeed: false,
+                superSpeedTimer: 0,
+                superSpeedCooldown: 0,
+                facing: 1
+            };
+            
+            // Crear villanos
+            const numVillains = Math.min(3, 1 + Math.floor((levelNum - 1) / 2));
+            villains = [];
+            
+            const villainPositions = [
+                {x: 18.5, y: 11.5},
+                {x: 10.5, y: 6.5},
+                {x: 1.5, y: 11.5}
+            ];
+            
+            const villainColors = ['#e74c3c', '#8e44ad', '#2c3e50'];
+            
+            for (let i = 0; i < numVillains; i++) {
+                villains.push({
+                    x: villainPositions[i].x,
+                    y: villainPositions[i].y,
+                    dirX: 0,
+                    dirY: 0,
+                    nextDirX: 0,
+                    nextDirY: 0,
+                    speed: BASE_SPEED * 0.6 * speedMultiplier,
+                    color: villainColors[i],
+                    scared: false,
+                    scaredTimer: 0,
+                    eyesOnly: false
+                });
+            }
+            
+            // Crear ciudadanos
+            citizens = [];
+            totalCitizens = MIN_CITIZENS_PER_LEVEL + (levelNum - 1) * 2;
+            
+            for (let i = 0; i < totalCitizens; i++) {
+                let validPosition = false;
+                let cx, cy;
+                
+                for (let attempt = 0; attempt < 100 && !validPosition; attempt++) {
+                    cx = Math.floor(Math.random() * (GRID_WIDTH - 2)) + 1;
+                    cy = Math.floor(Math.random() * (GRID_HEIGHT - 2)) + 1;
+                    
+                    if (maze[cy][cx] === 0 && 
+                        cx !== 1 && cy !== 1 &&
+                        !villains.some(v => Math.floor(v.x) === cx && Math.floor(v.y) === cy) &&
+                        !citizens.some(c => c.x === cx && c.y === cy)) {
+                        validPosition = true;
+                    }
+                }
+                
+                if (validPosition) {
+                    citizens.push({
+                        x: cx + 0.5,
+                        y: cy + 0.5,
+                        rescued: false,
+                        color: '#ff69b4',
+                        rescuedTimer: 0
+                    });
+                }
+            }
+            
+            updateHUD();
+            updateSpeedBar();
+        }
+
+        // Actualizar HUD en canvas
+        function updateHUD() {
+            ctx.fillStyle = '#000';
+            ctx.fillRect(0, 0, canvas.width, 30);
+            
+            ctx.fillStyle = '#ffd700';
+            ctx.font = 'bold 18px Courier New';
+            ctx.textAlign = 'left';
+            ctx.fillText(`SCORE: ${score.toString().padStart(6, '0')}`, 10, 22);
+            ctx.fillText(`LEVEL: ${level}`, 230, 22);
+            ctx.fillText(`LIVES: ${lives}`, 450, 22);
+        }
+
+        // Actualizar barra de velocidad
+        function updateSpeedBar() {
+            const speedPercentage = (speedMultiplier / 2.0) * 100;
+            speedBar.style.width = `${Math.min(100, speedPercentage)}%`;
+            
+            if (speedMultiplier <= 0.5) speedLabel.textContent = 'Dificultad: Fácil';
+            else if (speedMultiplier <= 1.0) speedLabel.textContent = 'Dificultad: Media';
+            else if (speedMultiplier <= 1.5) speedLabel.textContent = 'Dificultad: Difícil';
+            else speedLabel.textContent = 'Dificultad: EXTREMA';
+        }
+
+        // Verificar si una posición es válida (no es pared)
+        function isValidPosition(x, y) {
+            const gridX = Math.floor(x);
+            const gridY = Math.floor(y);
+            
+            // Verificar límites del grid
+            if (gridX < 0 || gridX >= GRID_WIDTH || gridY < 0 || gridY >= GRID_HEIGHT) {
+                return false;
+            }
+            
+            // Verificar si es pared
+            return maze[gridY][gridX] === 0;
+        }
+
+        // Mover héroe - ¡CORREGIDO PARA RESPETAR MUROS!
+        function moveHero() {
+            // Procesar super velocidad
+            if (hero.superSpeed) {
+                hero.superSpeedTimer -= 16.67;
+                if (hero.superSpeedTimer <= 0) {
+                    hero.superSpeed = false;
+                }
+            }
+            
+            if (hero.superSpeedCooldown > 0) {
+                hero.superSpeedCooldown -= 16.67;
+            }
+            
+            // Activar super velocidad con C
+            if ((keys.c || keys.C) && hero.superSpeedCooldown <= 0 && !hero.superSpeed && gameRunning) {
+                hero.superSpeed = true;
+                hero.superSpeedTimer = SUPER_SPEED_DURATION;
+                hero.superSpeedCooldown = SUPER_SPEED_COOLDOWN;
+            }
+            
+            // Cambiar dirección deseada
+            if (keys.ArrowLeft) {
+                hero.nextDirX = -1;
+                hero.nextDirY = 0;
+                hero.facing = -1;
+            } else if (keys.ArrowRight) {
+                hero.nextDirX = 1;
+                hero.nextDirY = 0;
+                hero.facing = 1;
+            } else if (keys.ArrowUp) {
+                hero.nextDirX = 0;
+                hero.nextDirY = -1;
+            } else if (keys.ArrowDown) {
+                hero.nextDirX = 0;
+                hero.nextDirY = 1;
+            }
+            
+            // Intentar cambiar a la dirección deseada - ¡VERIFICACIÓN DE COLISIONES CORREGIDA!
+            const nextX = hero.x + hero.nextDirX * 0.5;
+            const nextY = hero.y + hero.nextDirY * 0.5;
+            
+            if (isValidPosition(nextX, nextY)) {
+                hero.dirX = hero.nextDirX;
+                hero.dirY = hero.nextDirY;
+            }
+            
+            // Mover héroe - ¡VERIFICAR CADA PASO!
+            const currentSpeed = hero.superSpeed ? 
+                hero.speed * SUPER_SPEED_MULTIPLIER * speedMultiplier : 
+                hero.speed * speedMultiplier;
+            
+            const moveStep = currentSpeed / 30;
+            const steps = Math.ceil(moveStep * 10); // Dividir en pasos pequeños para mejor detección
+            
+            for (let i = 0; i < steps; i++) {
+                const stepX = hero.x + hero.dirX * (moveStep / steps);
+                const stepY = hero.y + hero.dirY * (moveStep / steps);
+                
+                if (isValidPosition(stepX, stepY)) {
+                    hero.x = stepX;
+                    hero.y = stepY;
+                } else {
+                    // Si hay colisión, detener el movimiento en esa dirección
+                    break;
+                }
+            }
+            
+            // Mantener dentro de los límites
+            hero.x = Math.max(1, Math.min(GRID_WIDTH - 1, hero.x));
+            hero.y = Math.max(1, Math.min(GRID_HEIGHT - 1, hero.y));
+            
+            // Animación de boca
+            hero.mouthAngle += hero.mouthDir;
+            if (hero.mouthAngle > 0.5 || hero.mouthAngle < 0.15) {
+                hero.mouthDir *= -1;
+            }
+            
+            // Verificar colisión con ciudadanos
+            for (const citizen of citizens) {
+                if (!citizen.rescued) {
+                    const dx = hero.x - citizen.x;
+                    const dy = hero.y - citizen.y;
+                    const distance = Math.sqrt(dx * dx + dy * dy);
+                    
+                    if (distance < 0.7) {
+                        citizen.rescued = true;
+                        citizen.rescuedTimer = 40;
+                        score += 100;
+                        rescuedCitizens++;
+                        updateHUD();
+                        
+                        if (rescuedCitizens >= totalCitizens) {
+                            completeLevel();
+                        }
+                    }
+                }
+            }
+            
+            // Verificar colisión con villanos
+            for (const villain of villains) {
+                const dx = hero.x - villain.x;
+                const dy = hero.y - villain.y;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < 0.85) {
+                    if (hero.superSpeed) {
+                        villain.x = 10.5;
+                        villain.y = 6.5;
+                        score += 200;
+                        updateHUD();
+                    } else {
+                        loseLife();
+                        return;
+                    }
+                }
+            }
+        }
+
+        // Mover villanos - ¡TAMBIÉN RESPETAN MUROS!
+        function moveVillains() {
+            for (const villain of villains) {
+                // IA simple: seguir al héroe
+                if (Math.random() < 0.7) {
+                    if (Math.abs(hero.x - villain.x) > Math.abs(hero.y - villain.y)) {
+                        villain.nextDirX = hero.x > villain.x ? 1 : -1;
+                        villain.nextDirY = 0;
+                    } else {
+                        villain.nextDirX = 0;
+                        villain.nextDirY = hero.y > villain.y ? 1 : -1;
+                    }
+                } else {
+                    // Movimiento aleatorio
+                    const dirs = [[1,0], [-1,0], [0,1], [0,-1]];
+                    const [dx, dy] = dirs[Math.floor(Math.random() * 4)];
+                    villain.nextDirX = dx;
+                    villain.nextDirY = dy;
+                }
+                
+                // Intentar cambiar dirección
+                const nextX = villain.x + villain.nextDirX * 0.5;
+                const nextY = villain.y + villain.nextDirY * 0.5;
+                
+                if (isValidPosition(nextX, nextY)) {
+                    villain.dirX = villain.nextDirX;
+                    villain.dirY = villain.nextDirY;
+                }
+                
+                // Mover villano
+                const moveStep = villain.speed / 30;
+                const steps = Math.ceil(moveStep * 10);
+                
+                for (let i = 0; i < steps; i++) {
+                    const stepX = villain.x + villain.dirX * (moveStep / steps);
+                    const stepY = villain.y + villain.dirY * (moveStep / steps);
+                    
+                    if (isValidPosition(stepX, stepY)) {
+                        villain.x = stepX;
+                        villain.y = stepY;
+                    } else {
+                        break;
+                    }
+                }
+                
+                // Mantener dentro del grid
+                villain.x = Math.max(1, Math.min(GRID_WIDTH - 1, villain.x));
+                villain.y = Math.max(1, Math.min(GRID_HEIGHT - 1, villain.y));
+            }
+        }
+
+        // Aumentar velocidad
+        function increaseSpeed() {
+            speedMultiplier = Math.min(2.0, speedMultiplier + SPEED_INCREMENT);
+            
+            villains.forEach(villain => {
+                villain.speed = BASE_SPEED * 0.6 * speedMultiplier;
+            });
+            
+            updateSpeedBar();
+        }
+
+        // Perder vida
+        function loseLife() {
+            lives--;
+            updateHUD();
+            
+            if (lives <= 0) {
+                endGame();
+            } else {
+                hero.x = 1.5;
+                hero.y = 1.5;
+                hero.dirX = 0;
+                hero.dirY = 0;
+                hero.superSpeed = false;
+                hero.superSpeedTimer = 0;
+            }
+        }
+
+        // Completar nivel
+        function completeLevel() {
+            score += 500;
+            updateHUD();
+            
+            gameRunning = false;
+            showLevelScreen = true;
+            levelNumberDisplay.textContent = level;
+            levelScreen.style.display = 'block';
+        }
+
+        // Siguiente nivel
+        function nextLevel() {
+            level++;
+            rescuedCitizens = 0;
+            showLevelScreen = false;
+            levelScreen.style.display = 'none';
+            initLevel(level);
+            gameRunning = true;
+            lastSpeedIncrease = Date.now();
+            gameLoop();
+        }
+
+        // Terminar juego
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            
+            finalScoreDisplay.textContent = `SCORE: ${score.toString().padStart(6, '0')}`;
+            finalCitizensDisplay.textContent = rescuedCitizens;
+            finalSpeedDisplay.textContent = `SPEED: ${speedMultiplier.toFixed(1)}x`;
+            
+            gameOverScreen.style.display = 'block';
+        }
+
+        // Dibujar laberinto
+        function drawMaze() {
+            for (let y = 0; y < GRID_HEIGHT; y++) {
+                for (let x = 0; x < GRID_WIDTH; x++) {
+                    if (maze[y][x] === 1) {
+                        // Pared - con textura
+                        ctx.fillStyle = '#2c3e50';
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE + 30, TILE_SIZE, TILE_SIZE);
+                        
+                        // Borde de ladrillo
+                        ctx.strokeStyle = '#34495e';
+                        ctx.lineWidth = 2;
+                        ctx.strokeRect(x * TILE_SIZE, y * TILE_SIZE + 30, TILE_SIZE, TILE_SIZE);
+                        
+                        // Textura de ladrillos
+                        ctx.fillStyle = '#1a252f';
+                        ctx.fillRect(x * TILE_SIZE + 3, y * TILE_SIZE + 33, TILE_SIZE - 6, 3);
+                        ctx.fillRect(x * TILE_SIZE + 3, y * TILE_SIZE + 48, TILE_SIZE - 6, 3);
+                        ctx.fillRect(x * TILE_SIZE + 3, y * TILE_SIZE + 63, TILE_SIZE - 6, 3);
+                    } else {
+                        // Camino
+                        ctx.fillStyle = '#111';
+                        ctx.fillRect(x * TILE_SIZE, y * TILE_SIZE + 30, TILE_SIZE, TILE_SIZE);
+                    }
+                }
+            }
+        }
+
+        // Dibujar superhéroe
+        function drawHero() {
+            const screenX = hero.x * TILE_SIZE;
+            const screenY = hero.y * TILE_SIZE + 30;
+            
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            
+            // Efecto de super velocidad
+            if (hero.superSpeed) {
+                ctx.fillStyle = `rgba(255, 215, 0, ${0.5 + Math.sin(gameFrame * 0.2) * 0.3})`;
+                for (let i = 0; i < 3; i++) {
+                    const trailX = -hero.facing * (10 + i * 6);
+                    const trailY = Math.sin(gameFrame * 0.3 + i) * 3;
+                    ctx.beginPath();
+                    ctx.arc(trailX, trailY, 6 + i * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Cuerpo (círculo dorado brillante)
+            ctx.fillStyle = hero.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, TILE_SIZE / 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Capa roja
+            ctx.fillStyle = '#e74c3c';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-15 * hero.facing, 20);
+            ctx.lineTo(15 * hero.facing, 20);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cabeza
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(0, -8, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pelo marrón
+            ctx.fillStyle = '#8B4513';
+            ctx.beginPath();
+            ctx.arc(0, -10, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Máscara de héroe
+            ctx.fillStyle = '#3498db';
+            ctx.fillRect(-10, -12, 20, 8);
+            
+            // Ojos
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(-6, -10, 4, 4);
+            ctx.fillRect(2, -10, 4, 4);
+            
+            // Logo en el pecho (S de superhéroe)
+            ctx.fillStyle = '#3498db';
+            ctx.font = 'bold 14px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText('S', 0, 5);
+            
+            ctx.restore();
+        }
+
+        // Dibujar villano
+        function drawVillain(villain) {
+            const screenX = villain.x * TILE_SIZE;
+            const screenY = villain.y * TILE_SIZE + 30;
+            
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            
+            // Cuerpo del villano
+            ctx.fillStyle = villain.color;
+            ctx.beginPath();
+            ctx.arc(0, 0, TILE_SIZE / 2.5, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Capa negra
+            ctx.fillStyle = '#000';
+            ctx.beginPath();
+            ctx.moveTo(0, 0);
+            ctx.lineTo(-12, 18);
+            ctx.lineTo(12, 18);
+            ctx.closePath();
+            ctx.fill();
+            
+            // Cabeza
+            ctx.fillStyle = '#444';
+            ctx.beginPath();
+            ctx.arc(0, -8, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ojos rojos malvados
+            ctx.fillStyle = '#ff0000';
+            ctx.fillRect(-6, -10, 4, 6);
+            ctx.fillRect(2, -10, 4, 6);
+            
+            // Boca malvada
+            ctx.fillStyle = '#8B0000';
+            ctx.fillRect(-5, 0, 10, 4);
+            
+            ctx.restore();
+        }
+
+        // Dibujar ciudadano
+        function drawCitizen(citizen) {
+            if (citizen.rescued) {
+                if (citizen.rescuedTimer > 0) {
+                    const scale = citizen.rescuedTimer / 40;
+                    const alpha = scale;
+                    
+                    ctx.save();
+                    ctx.translate(citizen.x * TILE_SIZE, citizen.y * TILE_SIZE + 30);
+                    ctx.globalAlpha = alpha;
+                    
+                    // Efecto de estrella dorada
+                    ctx.fillStyle = `rgba(255, 215, 0, ${alpha})`;
+                    ctx.beginPath();
+                    ctx.moveTo(0, -15 * scale);
+                    ctx.lineTo(4 * scale, -5 * scale);
+                    ctx.lineTo(12 * scale, -4 * scale);
+                    ctx.lineTo(6 * scale, 2 * scale);
+                    ctx.lineTo(8 * scale, 10 * scale);
+                    ctx.lineTo(0, 5 * scale);
+                    ctx.lineTo(-8 * scale, 10 * scale);
+                    ctx.lineTo(-6 * scale, 2 * scale);
+                    ctx.lineTo(-12 * scale, -4 * scale);
+                    ctx.lineTo(-4 * scale, -5 * scale);
+                    ctx.closePath();
+                    ctx.fill();
+                    
+                    ctx.restore();
+                    citizen.rescuedTimer--;
+                }
+                return;
+            }
+            
+            const screenX = citizen.x * TILE_SIZE;
+            const screenY = citizen.y * TILE_SIZE + 30;
+            
+            ctx.save();
+            ctx.translate(screenX, screenY);
+            
+            // Vestido rosa
+            ctx.fillStyle = citizen.color;
+            ctx.beginPath();
+            ctx.arc(0, 5, 9, 0, Math.PI);
+            ctx.fill();
+            
+            // Cuerpo
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(-6, -12, 12, 12);
+            
+            // Cabeza
+            ctx.fillStyle = '#f1c40f';
+            ctx.beginPath();
+            ctx.arc(0, -12, 7, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Pelo rubio
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(0, -14, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Ojos
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(-4, -15, 3, 3);
+            ctx.fillRect(1, -15, 3, 3);
+            
+            // Boca sonriente
+            ctx.strokeStyle = '#e74c3c';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(0, -10, 4, 0, Math.PI);
+            ctx.stroke();
+            
+            ctx.restore();
+        }
+
+        // Dibujar indicador de super velocidad
+        function drawSuperSpeedIndicator() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+            ctx.fillRect(canvas.width - 110, 5, 100, 20);
+            
+            if (hero.superSpeedCooldown > 0) {
+                const cooldownPercent = hero.superSpeedCooldown / SUPER_SPEED_COOLDOWN;
+                ctx.fillStyle = `rgba(255, 215, 0, ${0.3 + cooldownPercent * 0.4})`;
+                ctx.fillRect(canvas.width - 105, 10, 90 * (1 - cooldownPercent), 10);
+                
+                ctx.strokeStyle = '#666';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(canvas.width - 105, 10, 90, 10);
+                
+                ctx.fillStyle = '#fff';
+                ctx.font = 'bold 12px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('C: ' + Math.ceil(hero.superSpeedCooldown/1000), canvas.width - 60, 18);
+            } else {
+                ctx.fillStyle = '#ffd700';
+                ctx.fillRect(canvas.width - 105, 10, 90, 10);
+                
+                ctx.strokeStyle = '#ffd700';
+                ctx.lineWidth = 1;
+                ctx.strokeRect(canvas.width - 105, 10, 90, 10);
+                
+                ctx.fillStyle = '#000';
+                ctx.font = 'bold 12px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('C: LISTO', canvas.width - 60, 18);
+            }
+        }
+
+        // Bucle principal del juego
+        function gameLoop() {
+            if (!gameRunning) {
+                if (showLevelScreen) {
+                    requestAnimationFrame(gameLoop);
+                }
+                return;
+            }
+            
+            gameFrame++;
+            
+            // Limpiar canvas (solo área de juego, no HUD)
+            ctx.clearRect(0, 30, canvas.width, canvas.height - 30);
+            
+            // Actualizar tiempo
+            gameTime += 16.67;
+            
+            // Aumentar velocidad cada 30 segundos
+            const now = Date.now();
+            if (now - lastSpeedIncrease >= SPEED_INCREMENT_TIME) {
+                increaseSpeed();
+                lastSpeedIncrease = now;
+            }
+            
+            // Mover héroe
+            moveHero();
+            
+            // Mover villanos
+            moveVillains();
+            
+            // Dibujar elementos
+            drawMaze();
+            citizens.forEach(drawCitizen);
+            villains.forEach(drawVillain);
+            drawHero();
+            drawSuperSpeedIndicator();
+            
+            // Continuar bucle
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Eventos del teclado
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Botones
+        startBtn.addEventListener('click', init);
+        restartBtn.addEventListener('click', init);
+        nextLevelBtn.addEventListener('click', nextLevel);
+
+        // Pantalla inicial
+        startScreen.style.display = 'block';
+        
+        // Dibujar HUD inicial
+        ctx.fillStyle = '#000';
+        ctx.fillRect(0, 0, canvas.width, 30);
+        ctx.fillStyle = '#ffd700';
+        ctx.font = 'bold 18px Courier New';
+        ctx.textAlign = 'left';
+        ctx.fillText('SCORE: 000000', 10, 22);
+        ctx.fillText('LEVEL: 1', 230, 22);
+        ctx.fillText('LIVES: 3', 450, 22);
+    </script>
+</body>
+</html>
