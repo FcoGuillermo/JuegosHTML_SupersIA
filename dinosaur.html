@@ -1,0 +1,789 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supervelocidad Infinita</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background: linear-gradient(135deg, #0a0a2a 0%, #1a1a4a 100%);
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+        }
+
+        #game-container {
+            position: relative;
+            width: 600px;
+            height: 700px;
+        }
+
+        canvas {
+            background: linear-gradient(to bottom, #0a0a2a 0%, #1a1a4a 100%);
+            border: 4px solid #ff4444;
+            border-radius: 10px;
+            box-shadow: 0 0 30px rgba(255, 68, 68, 0.7);
+        }
+
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: space-between;
+            padding: 10px 20px;
+            color: white;
+            font-size: 20px;
+            font-weight: bold;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.8);
+            z-index: 10;
+        }
+
+        #score, #time, #speed {
+            background: rgba(0, 0, 0, 0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
+            border: 2px solid #ff4444;
+        }
+
+        #screens {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            z-index: 20;
+            text-align: center;
+            padding: 20px;
+        }
+
+        #start-screen, #game-over-screen {
+            background: rgba(10, 10, 42, 0.9);
+            border-radius: 15px;
+            padding: 30px;
+            max-width: 550px;
+        }
+
+        #start-screen h1, #game-over-screen h1 {
+            font-size: 48px;
+            color: #ff4444;
+            text-shadow: 0 0 20px #ff4444;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+
+        #start-screen p, #game-over-screen p {
+            font-size: 20px;
+            line-height: 1.8;
+            margin: 15px 0;
+        }
+
+        #start-screen strong, #instructions strong {
+            color: #ff4444;
+        }
+
+        #start-btn, #restart-btn {
+            background: linear-gradient(135deg, #ff4444, #cc0000);
+            color: white;
+            border: none;
+            padding: 15px 50px;
+            font-size: 24px;
+            font-weight: bold;
+            font-family: 'Courier New', monospace;
+            border-radius: 50px;
+            cursor: pointer;
+            margin: 20px 0;
+            box-shadow: 0 0 20px #ff4444;
+            transition: all 0.3s ease;
+        }
+
+        #start-btn:hover, #restart-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 0 30px #ff4444;
+        }
+
+        #instructions {
+            margin-top: 20px;
+            background: rgba(20, 20, 60, 0.8);
+            padding: 15px;
+            border-radius: 10px;
+            border: 2px solid #ff4444;
+        }
+
+        #final-score, #final-time, #final-speed {
+            font-size: 36px;
+            color: #ff4444;
+            margin: 15px 0;
+        }
+
+        #speed-meter {
+            margin-top: 20px;
+            width: 300px;
+            height: 30px;
+            background: #333;
+            border-radius: 15px;
+            overflow: hidden;
+            border: 2px solid #ff4444;
+        }
+
+        #speed-bar {
+            height: 100%;
+            width: 10%;
+            background: linear-gradient(90deg, #2ecc71, #f39c12, #e74c3c);
+            transition: width 0.3s ease;
+        }
+
+        #speed-label {
+            margin-top: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            color: #ff4444;
+        }
+
+        .stat-label {
+            font-size: 16px;
+            color: #aaa;
+            margin-bottom: 5px;
+        }
+
+        #city-background {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 100px;
+            background: #111;
+            z-index: 5;
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <canvas id="game-canvas" width="600" height="700"></canvas>
+        
+        <div id="hud">
+            <div id="score">SCORE: 000000</div>
+            <div id="time">TIME: 00:00</div>
+            <div id="speed">SPEED: 0.1</div>
+        </div>
+
+        <div id="screens">
+            <!-- Pantalla de inicio -->
+            <div id="start-screen">
+                <h1>⚡ SUPERVELOCIDAD INFINITA</h1>
+                <p>Controla al superhéroe con poderes de supervelocidad.</p>
+                <p>Esquiva los obstáculos que caen del cielo.</p>
+                <p>¡Cada 30 segundos la velocidad aumenta!</p>
+                
+                <div id="instructions">
+                    <p><strong>← → :</strong> Moverse izquierda/derecha</p>
+                    <p><strong>Z :</strong> Esquivar rápido (cooldown 3s)</p>
+                </div>
+                
+                <p><strong>Puntuación:</strong></p>
+                <p>+100 puntos por obstáculo esquivado</p>
+                <p>+1000 puntos por cada minuto sobrevivido</p>
+                
+                <button id="start-btn">🎮 ¡COMENZAR!</button>
+            </div>
+
+            <!-- Pantalla de game over -->
+            <div id="game-over-screen" style="display: none;">
+                <h1>💥 ¡CAÍSTE!</h1>
+                <p>El superhéroe no pudo esquivar todos los obstáculos...</p>
+                
+                <div class="stat-label">PUNTUACIÓN FINAL:</div>
+                <div id="final-score">SCORE: 000000</div>
+                
+                <div class="stat-label">TIEMPO SOBREVIVIDO:</div>
+                <div id="final-time">TIME: 00:00</div>
+                
+                <div class="stat-label">VELOCIDAD ALCANZADA:</div>
+                <div id="final-speed">SPEED: 0.1</div>
+                
+                <div id="speed-label">Progresión de dificultad</div>
+                <div id="speed-meter">
+                    <div id="speed-bar"></div>
+                </div>
+                
+                <button id="restart-btn">🔄 ¡OTRA VEZ!</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Elementos del DOM
+        const canvas = document.getElementById('game-canvas');
+        const ctx = canvas.getContext('2d');
+        const scoreDisplay = document.getElementById('score');
+        const timeDisplay = document.getElementById('time');
+        const speedDisplay = document.getElementById('speed');
+        const startScreen = document.getElementById('start-screen');
+        const gameOverScreen = document.getElementById('game-over-screen');
+        const startBtn = document.getElementById('start-btn');
+        const restartBtn = document.getElementById('restart-btn');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const finalTimeDisplay = document.getElementById('final-time');
+        const finalSpeedDisplay = document.getElementById('final-speed');
+        const speedBar = document.getElementById('speed-bar');
+        const speedLabel = document.getElementById('speed-label');
+
+        // Constantes del juego
+        const PLAYER_WIDTH = 40;
+        const PLAYER_HEIGHT = 60;
+        const OBSTACLE_WIDTH = 50;
+        const OBSTACLE_HEIGHT = 40;
+        const MIN_OBSTACLE_GAP = 100;
+        const MAX_OBSTACLE_GAP = 300;
+        const BASE_OBSTACLE_SPEED = 3; // Velocidad base de caída
+        const SPEED_INCREMENT = 0.1;   // Incremento cada 30 segundos
+        const SPEED_INCREMENT_TIME = 30000; // 30 segundos en ms
+        const DODGE_DISTANCE = 150;     // Distancia de esquive rápido
+        const DODGE_COOLDOWN = 3000;    // 3 segundos de cooldown
+
+        // Variables del juego
+        let gameRunning = false;
+        let score = 0;
+        let gameTime = 0;
+        let speedMultiplier = 0.1; // Velocidad inicial 0.1x
+        let lastSpeedIncrease = 0;
+        let lastMinuteReward = 0;
+        let lastObstacleTime = 0;
+        let obstacleFrequency = 1500; // Cada 1.5 segundos
+        let obstacles = [];
+        let keys = {};
+        let player = {
+            x: canvas.width / 2,
+            y: canvas.height - 100,
+            width: PLAYER_WIDTH,
+            height: PLAYER_HEIGHT,
+            speed: 8,
+            color: '#3498db',
+            dodgeCooldown: 0,
+            dodging: false,
+            dodgeDirection: 0,
+            dodgeTimer: 0
+        };
+        let gameOver = false;
+        let gameFrame = 0;
+        let buildings = [];
+
+        // Inicializar el juego
+        function init() {
+            gameRunning = true;
+            gameOver = false;
+            score = 0;
+            gameTime = 0;
+            speedMultiplier = 0.1;
+            lastSpeedIncrease = Date.now();
+            lastMinuteReward = Date.now();
+            lastObstacleTime = Date.now();
+            obstacleFrequency = 1500;
+            
+            obstacles = [];
+            buildings = [];
+            
+            player = {
+                x: canvas.width / 2,
+                y: canvas.height - 100,
+                width: PLAYER_WIDTH,
+                height: PLAYER_HEIGHT,
+                speed: 8,
+                color: '#3498db',
+                dodgeCooldown: 0,
+                dodging: false,
+                dodgeDirection: 0,
+                dodgeTimer: 0
+            };
+            
+            // Crear edificios de fondo
+            createBuildings();
+            
+            // Ocultar pantallas
+            startScreen.style.display = 'none';
+            gameOverScreen.style.display = 'none';
+            
+            // Actualizar HUD
+            updateHUD();
+            
+            // Empezar bucle del juego
+            gameLoop();
+        }
+
+        // Crear edificios de fondo
+        function createBuildings() {
+            const numBuildings = 15;
+            for (let i = 0; i < numBuildings; i++) {
+                buildings.push({
+                    x: i * (canvas.width / numBuildings),
+                    width: canvas.width / numBuildings - 5,
+                    height: Math.random() * 150 + 50,
+                    y: canvas.height - 80,
+                    color: `hsl(${Math.random() * 30 + 200}, 40%, ${Math.random() * 20 + 30}%)`
+                });
+            }
+        }
+
+        // Crear obstáculo
+        function createObstacle() {
+            const now = Date.now();
+            if (now - lastObstacleTime > obstacleFrequency) {
+                // Posición aleatoria horizontal
+                const x = Math.random() * (canvas.width - OBSTACLE_WIDTH);
+                
+                // Tipo de obstáculo aleatorio
+                const types = ['meteor', 'debris', 'energy'];
+                const type = types[Math.floor(Math.random() * types.length)];
+                
+                obstacles.push({
+                    x: x,
+                    y: -OBSTACLE_HEIGHT,
+                    width: OBSTACLE_WIDTH,
+                    height: OBSTACLE_HEIGHT,
+                    speed: BASE_OBSTACLE_SPEED * speedMultiplier,
+                    type: type,
+                    color: type === 'meteor' ? '#e74c3c' : 
+                          type === 'debris' ? '#95a5a6' : '#9b59b6',
+                    rotation: Math.random() * Math.PI * 2,
+                    rotationSpeed: (Math.random() - 0.5) * 0.05
+                });
+                
+                lastObstacleTime = now;
+            }
+        }
+
+        // Esquivar rápido
+        function dodge(direction) {
+            if (player.dodgeCooldown <= 0 && !player.dodging) {
+                player.dodging = true;
+                player.dodgeDirection = direction;
+                player.dodgeTimer = 15; // Frames de animación
+                player.dodgeCooldown = DODGE_COOLDOWN;
+            }
+        }
+
+        // Actualizar esquive
+        function updateDodge() {
+            if (player.dodging) {
+                if (player.dodgeTimer > 0) {
+                    player.x += player.dodgeDirection * 10;
+                    player.dodgeTimer--;
+                } else {
+                    player.dodging = false;
+                }
+                
+                // Limitar posición
+                player.x = Math.max(player.width / 2, Math.min(canvas.width - player.width / 2, player.x));
+            }
+            
+            // Reducir cooldown
+            if (player.dodgeCooldown > 0) {
+                player.dodgeCooldown -= 16.67; // Aprox 60 FPS
+            }
+        }
+
+        // Mover jugador
+        function movePlayer() {
+            // Movimiento normal
+            if (keys.ArrowLeft) {
+                player.x -= player.speed * speedMultiplier;
+            }
+            if (keys.ArrowRight) {
+                player.x += player.speed * speedMultiplier;
+            }
+            
+            // Esquivar rápido con Z
+            if (keys.z || keys.Z) {
+                if (!player.lastDodgePress) {
+                    dodge(player.x > canvas.width / 2 ? -1 : 1);
+                }
+                player.lastDodgePress = true;
+            } else {
+                player.lastDodgePress = false;
+            }
+            
+            // Limitar posición
+            player.x = Math.max(player.width / 2, Math.min(canvas.width - player.width / 2, player.x));
+        }
+
+        // Mover obstáculos
+        function moveObstacles() {
+            for (let i = obstacles.length - 1; i >= 0; i--) {
+                const obstacle = obstacles[i];
+                
+                // Mover obstáculo hacia abajo
+                obstacle.y += obstacle.speed;
+                obstacle.rotation += obstacle.rotationSpeed;
+                
+                // Verificar colisión con jugador
+                if (checkCollision(player, obstacle)) {
+                    endGame();
+                    return;
+                }
+                
+                // Sumar puntos si el obstáculo pasa al jugador
+                if (obstacle.y > player.y + player.height && !obstacle.passed) {
+                    score += 100;
+                    obstacle.passed = true;
+                    updateHUD();
+                }
+                
+                // Eliminar obstáculos fuera de pantalla
+                if (obstacle.y > canvas.height + OBSTACLE_HEIGHT) {
+                    obstacles.splice(i, 1);
+                }
+            }
+        }
+
+        // Verificar colisión
+        function checkCollision(obj1, obj2) {
+            return obj1.x - obj1.width / 2 < obj2.x + obj2.width / 2 &&
+                   obj1.x + obj1.width / 2 > obj2.x - obj2.width / 2 &&
+                   obj1.y - obj1.height / 2 < obj2.y + obj2.height / 2 &&
+                   obj1.y + obj1.height / 2 > obj2.y - obj2.height / 2;
+        }
+
+        // Aumentar velocidad
+        function increaseSpeed() {
+            speedMultiplier = Math.min(2.0, speedMultiplier + SPEED_INCREMENT);
+            obstacleFrequency = Math.max(400, obstacleFrequency - 200);
+            
+            // Actualizar barra de velocidad
+            const speedPercentage = (speedMultiplier / 2.0) * 100;
+            speedBar.style.width = `${speedPercentage}%`;
+            
+            if (speedMultiplier <= 0.5) speedLabel.textContent = 'Dificultad: Fácil';
+            else if (speedMultiplier <= 1.0) speedLabel.textContent = 'Dificultad: Media';
+            else if (speedMultiplier <= 1.5) speedLabel.textContent = 'Dificultad: Difícil';
+            else speedLabel.textContent = 'Dificultad: EXTREMA';
+        }
+
+        // Verificar recompensa por minuto
+        function checkMinuteReward() {
+            const now = Date.now();
+            if (now - lastMinuteReward >= 60000) {
+                score += 1000;
+                lastMinuteReward = now;
+                updateHUD();
+            }
+        }
+
+        // Actualizar HUD
+        function updateHUD() {
+            scoreDisplay.textContent = `SCORE: ${score.toString().padStart(6, '0')}`;
+            
+            const minutes = Math.floor(gameTime / 60000);
+            const seconds = Math.floor((gameTime % 60000) / 1000);
+            timeDisplay.textContent = `TIME: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            speedDisplay.textContent = `SPEED: ${speedMultiplier.toFixed(1)}x`;
+        }
+
+        // Terminar juego
+        function endGame() {
+            gameRunning = false;
+            gameOver = true;
+            
+            finalScoreDisplay.textContent = `SCORE: ${score.toString().padStart(6, '0')}`;
+            
+            const minutes = Math.floor(gameTime / 60000);
+            const seconds = Math.floor((gameTime % 60000) / 1000);
+            finalTimeDisplay.textContent = `TIME: ${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
+            
+            finalSpeedDisplay.textContent = `SPEED: ${speedMultiplier.toFixed(1)}x`;
+            
+            gameOverScreen.style.display = 'block';
+        }
+
+        // Dibujar fondo estrellado
+        function drawStars() {
+            ctx.fillStyle = '#fff';
+            for (let i = 0; i < 100; i++) {
+                const x = (gameFrame * 0.1 + i * 13) % canvas.width;
+                const y = (i * 23) % (canvas.height - 150);
+                const size = Math.sin(gameFrame * 0.05 + i) * 0.5 + 1.5;
+                
+                ctx.beginPath();
+                ctx.arc(x, y, size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        // Dibujar edificios
+        function drawBuildings() {
+            buildings.forEach(building => {
+                // Edificio
+                ctx.fillStyle = building.color;
+                ctx.fillRect(building.x, building.y - building.height, building.width, building.height);
+                
+                // Ventanas
+                ctx.fillStyle = '#ffd700';
+                const numWindows = Math.floor(building.height / 30);
+                for (let i = 0; i < numWindows; i++) {
+                    const wx = building.x + 5;
+                    const wy = building.y - building.height + 10 + i * 30;
+                    ctx.fillRect(wx, wy, building.width - 10, 15);
+                }
+                
+                // Antena
+                ctx.fillStyle = '#aaa';
+                ctx.fillRect(building.x + building.width / 2 - 2, building.y - building.height - 20, 4, 20);
+            });
+        }
+
+        // Dibujar superhéroe
+        function drawHero() {
+            ctx.save();
+            ctx.translate(player.x, player.y);
+            
+            // Efecto de velocidad (estelas)
+            if (speedMultiplier > 0.3) {
+                ctx.fillStyle = `rgba(255, 68, 68, ${Math.min(0.7, speedMultiplier)})`;
+                for (let i = 0; i < Math.floor(speedMultiplier * 3); i++) {
+                    const trailX = -20 - i * 15;
+                    const trailY = Math.sin(gameFrame * 0.2 + i) * 5;
+                    const trailWidth = 15 + i * 5;
+                    const trailHeight = 25;
+                    
+                    ctx.beginPath();
+                    ctx.ellipse(trailX, trailY, trailWidth, trailHeight, 0, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Cuerpo
+            ctx.fillStyle = player.color;
+            ctx.fillRect(-player.width / 2, -player.height / 2, player.width, player.height - 10);
+            
+            // Cabeza
+            ctx.fillStyle = '#f1c40f'; // Piel
+            ctx.fillRect(-player.width / 2 + 5, -player.height / 2 - 20, player.width - 10, 20);
+            
+            // Pelo marrón
+            ctx.fillStyle = '#8B4513';
+            ctx.fillRect(-player.width / 2 + 3, -player.height / 2 - 25, player.width - 6, 8);
+            
+            // Ojos
+            ctx.fillStyle = '#2c3e50';
+            ctx.fillRect(-8, -player.height / 2 - 15, 6, 6);
+            ctx.fillRect(2, -player.height / 2 - 15, 6, 6);
+            
+            // Logo en el pecho
+            ctx.fillStyle = '#ffd700';
+            ctx.beginPath();
+            ctx.arc(0, 5, 8, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Brazos
+            ctx.fillStyle = '#f1c40f';
+            ctx.fillRect(-player.width / 2 - 8, -player.height / 2 + 5, 8, 20);
+            ctx.fillRect(player.width / 2, -player.height / 2 + 5, 8, 20);
+            
+            // Piernas
+            ctx.fillStyle = '#34495e';
+            ctx.fillRect(-player.width / 2 + 5, player.height / 2 - 25, 10, 25);
+            ctx.fillRect(player.width / 2 - 15, player.height / 2 - 25, 10, 25);
+            
+            // Indicador de cooldown de esquive
+            if (player.dodgeCooldown > 0) {
+                const cooldownPercent = player.dodgeCooldown / DODGE_COOLDOWN;
+                ctx.fillStyle = `rgba(255, 255, 255, ${0.3 + cooldownPercent * 0.7})`;
+                ctx.beginPath();
+                ctx.arc(0, -player.height / 2 - 30, 12, 0, Math.PI * 2 * cooldownPercent);
+                ctx.strokeStyle = '#ff4444';
+                ctx.lineWidth = 3;
+                ctx.stroke();
+            } else {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+                ctx.beginPath();
+                ctx.arc(0, -player.height / 2 - 30, 12, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.fillStyle = '#ff4444';
+                ctx.font = 'bold 14px Courier New';
+                ctx.textAlign = 'center';
+                ctx.fillText('Z', 0, -player.height / 2 - 25);
+            }
+            
+            ctx.restore();
+        }
+
+        // Dibujar obstáculo
+        function drawObstacle(obstacle) {
+            ctx.save();
+            ctx.translate(obstacle.x + obstacle.width / 2, obstacle.y + obstacle.height / 2);
+            ctx.rotate(obstacle.rotation);
+            
+            switch(obstacle.type) {
+                case 'meteor':
+                    // Meteorito
+                    ctx.fillStyle = obstacle.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, obstacle.width / 2, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Cráteres
+                    ctx.fillStyle = '#555';
+                    ctx.beginPath();
+                    ctx.arc(-8, -5, 6, 0, Math.PI * 2);
+                    ctx.arc(8, 5, 5, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Brillo
+                    ctx.fillStyle = 'rgba(255, 255, 200, 0.7)';
+                    ctx.beginPath();
+                    ctx.arc(-5, -5, 4, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+                    
+                case 'debris':
+                    // Escombros
+                    ctx.fillStyle = obstacle.color;
+                    ctx.fillRect(-obstacle.width / 2, -obstacle.height / 2, obstacle.width, obstacle.height);
+                    
+                    ctx.fillStyle = '#7f8c8d';
+                    ctx.fillRect(-obstacle.width / 2 + 5, -obstacle.height / 2 + 5, obstacle.width - 10, obstacle.height - 10);
+                    
+                    // Tornillos
+                    ctx.fillStyle = '#34495e';
+                    ctx.fillRect(-obstacle.width / 2 + 8, -obstacle.height / 2 + 8, 5, 5);
+                    ctx.fillRect(obstacle.width / 2 - 13, obstacle.height / 2 - 13, 5, 5);
+                    break;
+                    
+                case 'energy':
+                    // Bola de energía
+                    const pulse = Math.sin(gameFrame * 0.1) * 0.2 + 0.8;
+                    
+                    // Núcleo
+                    ctx.fillStyle = obstacle.color;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, obstacle.width / 2 * pulse, 0, Math.PI * 2);
+                    ctx.fill();
+                    
+                    // Aura exterior
+                    const gradient = ctx.createRadialGradient(0, 0, 0, 0, 0, obstacle.width);
+                    gradient.addColorStop(0, 'rgba(155, 89, 182, 0.8)');
+                    gradient.addColorStop(0.7, 'rgba(155, 89, 182, 0.3)');
+                    gradient.addColorStop(1, 'rgba(155, 89, 182, 0)');
+                    
+                    ctx.fillStyle = gradient;
+                    ctx.beginPath();
+                    ctx.arc(0, 0, obstacle.width * 1.5, 0, Math.PI * 2);
+                    ctx.fill();
+                    break;
+            }
+            
+            ctx.restore();
+        }
+
+        // Dibujar HUD de velocidad
+        function drawSpeedIndicator() {
+            // Fondo semitransparente
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.6)';
+            ctx.fillRect(canvas.width - 120, 20, 100, 40);
+            
+            // Texto de velocidad
+            ctx.fillStyle = '#ff4444';
+            ctx.font = 'bold 20px Courier New';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${speedMultiplier.toFixed(1)}x`, canvas.width - 70, 47);
+            
+            // Barra de progreso hasta siguiente aumento
+            const timeSinceIncrease = Date.now() - lastSpeedIncrease;
+            const progress = timeSinceIncrease / SPEED_INCREMENT_TIME;
+            const barWidth = 80;
+            const barHeight = 8;
+            const barX = canvas.width - 110;
+            const barY = 55;
+            
+            ctx.fillStyle = '#333';
+            ctx.fillRect(barX, barY, barWidth, barHeight);
+            
+            ctx.fillStyle = '#ff4444';
+            ctx.fillRect(barX, barY, barWidth * progress, barHeight);
+            
+            ctx.strokeStyle = '#fff';
+            ctx.lineWidth = 1;
+            ctx.strokeRect(barX, barY, barWidth, barHeight);
+        }
+
+        // Bucle principal del juego
+        function gameLoop() {
+            if (!gameRunning) return;
+            
+            gameFrame++;
+            
+            // Limpiar canvas
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            // Actualizar tiempo
+            gameTime += 16.67;
+            
+            // Aumentar velocidad cada 30 segundos
+            const now = Date.now();
+            if (now - lastSpeedIncrease >= SPEED_INCREMENT_TIME) {
+                increaseSpeed();
+                lastSpeedIncrease = now;
+            }
+            
+            // Verificar recompensa por minuto
+            checkMinuteReward();
+            
+            // Crear obstáculos
+            createObstacle();
+            
+            // Mover jugador
+            movePlayer();
+            
+            // Actualizar esquive
+            updateDodge();
+            
+            // Mover obstáculos
+            moveObstacles();
+            
+            // Dibujar elementos
+            drawStars();
+            drawBuildings();
+            obstacles.forEach(drawObstacle);
+            drawHero();
+            drawSpeedIndicator();
+            
+            // Actualizar HUD
+            updateHUD();
+            
+            // Continuar bucle
+            requestAnimationFrame(gameLoop);
+        }
+
+        // Eventos del teclado
+        window.addEventListener('keydown', (e) => {
+            keys[e.key] = true;
+        });
+
+        window.addEventListener('keyup', (e) => {
+            keys[e.key] = false;
+        });
+
+        // Botones
+        startBtn.addEventListener('click', init);
+        restartBtn.addEventListener('click', init);
+
+        // Iniciar con pantalla de inicio
+        startScreen.style.display = 'block';
+    </script>
+</body>
+</html>
