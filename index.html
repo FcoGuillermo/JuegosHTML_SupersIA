@@ -67,6 +67,33 @@
             transform: translateY(1px);
             box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
         }
+        
+        .back-btn {
+            background-color: #891b16;
+            color: white;
+            border: none;
+            padding: 20px;
+            font-size: 24px;
+            font-weight: bold;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 30px;
+        }
+        
+        .back-btn:hover {
+            background-color: #a3241c;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.4);
+        }
+        
+        .back-btn:active {
+            transform: translateY(1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+        }
 
         @media (max-width: 600px) {
             h1 {
@@ -76,6 +103,12 @@
             .game-btn {
                 font-size: 20px;
                 padding: 15px;
+            }
+            
+            .back-btn {
+                font-size: 20px;
+                padding: 15px;
+                margin-top: 20px;
             }
         }
     </style>
@@ -90,6 +123,8 @@
             <a href="pacman.html" class="game-btn">RESCATA Y HUYE</a>
             <a href="dinosaur.html" class="game-btn">ESQUIVA LOS ATAQUES</a>
         </div>
+        
+        <a href="https://fco-guillermo-github-io.vercel.app/" class="back-btn">VOLVER</a>
     </div>
 </body>
 </html>
